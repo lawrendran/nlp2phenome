@@ -17,10 +17,7 @@ def get_nlp_instance():
 
 def get_sentences_as_anns(nlp, text):
     doc = nlp(text)
-    anns = []
-    for s in doc.sents:
-        anns.append(BasicAnn(s.text, s.start_char, s.end_char))
-    return anns
+    return [BasicAnn(s.text, s.start_char, s.end_char) for s in doc.sents]
 
 
 class AbstractedSentence(object):
@@ -110,7 +107,7 @@ class TokenAbstraction(object):
         return self._verbs
 
     def do_abstract(self):
-        self._children = [t for t in self._t.children]
+        self._children = list(self._t.children)
         t = self._t
         r = t
         while (t.head != t) and t.pos_ != u"VERB":
@@ -131,10 +128,8 @@ class ReportAbstractor(SemEHRAnnDoc):
         self._abstracted_sents = []
 
     def get_abstracted_sents(self):
-        seq = 0
-        for s in self.sentences:
+        for seq, s in enumerate(self.sentences):
             a_sent = AbstractedSentence(seq)
-            seq += 1
             anns = sorted(self.annotations, key=lambda x: x.start)
             for a in anns:
                 if a.overlap(s):
@@ -157,8 +152,16 @@ def test_spacy():
     nlp = spacy.load("en_core_web_sm")
     doc = nlp(u"She said he might be getting better soon.")
     for token in doc:
-        print(token.text, token.pos_, token.dep_, token.head.text, token.head.pos_,
-              [child for child in token.children], token.idx, token.shape_)
+        print(
+            token.text,
+            token.pos_,
+            token.dep_,
+            token.head.text,
+            token.head.pos_,
+            list(token.children),
+            token.idx,
+            token.shape_,
+        )
 
 
 def test_abstract_sentence():

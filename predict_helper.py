@@ -165,9 +165,14 @@ def predict_to_eHOST_results(predict_setting):
     output_eHOST_format(predicted_results, ss.settings['output_folder'])
     logging.info('results saved to %s' % ss.settings['output_folder'])
     if 'output_file' in ss.settings:
-        d2ann = {}
-        for d in predicted_results:
-            d2ann[d] = [{'label': t['label'], 'ann': t['ann'].to_dict()} for t in predicted_results[d]]
+        d2ann = {
+            d: [
+                {'label': t['label'], 'ann': t['ann'].to_dict()}
+                for t in predicted_results[d]
+            ]
+            for d in predicted_results
+        }
+
         utils.save_json_array(d2ann, ss.settings['output_file'])
 
 

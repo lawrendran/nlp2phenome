@@ -51,15 +51,20 @@ class BasicAnn(object):
         self._end = value
 
     def overlap(self, other_ann):
-        if (other_ann.start <= self.start <= other_ann.end or other_ann.start <= self.end <= other_ann.end) or \
-                (self.start <= other_ann.start <= self.end or self.start <= other_ann.end <= self.end):
-            return True
-        else:
-            return False
+        return (
+            other_ann.start <= self.start <= other_ann.end
+            or other_ann.start <= self.end <= other_ann.end
+        ) or (
+            self.start <= other_ann.start <= self.end
+            or self.start <= other_ann.end <= self.end
+        )
 
     def is_larger(self, other_ann):
-        return self.start <= other_ann.start and self.end >= other_ann.end \
-               and not (self.start == other_ann.start and self.end == other_ann.end)
+        return (
+            self.start <= other_ann.start
+            and self.end >= other_ann.end
+            and (self.start != other_ann.start or self.end != other_ann.end)
+        )
 
     def serialise_json(self):
         return {'start': self.start, 'end': self.end, 'str': self.str, 'id': self.id}
@@ -264,10 +269,7 @@ class SemEHRAnnDoc(object):
     """
 
     def __init__(self, file_path, ann_doc=None):
-        if ann_doc is not None:
-            self._doc = ann_doc
-        else:
-            self._doc = utils.load_json_data(file_path)
+        self._doc = ann_doc if ann_doc is not None else utils.load_json_data(file_path)
         self._anns = []
         self._phenotype_anns = []
         self._sentences = []
@@ -355,11 +357,9 @@ class SemEHRAnnDoc(object):
                         lbl2insts[e.type] = set()
                     lbl2insts[e.type].add('\t'.join([a.cui, a.pref, a.sty]))
                     continue
-            # if not matched:
-            if True:
-                if e.type not in lbl2missed:
-                    lbl2missed[e.type] = []
-                lbl2missed[e.type].append(e.str.lower())
+            if e.type not in lbl2missed:
+                lbl2missed[e.type] = []
+            lbl2missed[e.type].append(e.str.lower())
 
     @staticmethod
     def keep_max_len_anns(anns):
@@ -515,10 +515,7 @@ class CustomisedRecoginiser(SemEHRAnnDoc):
         sent = self.get_ann_sentence(ann)
         if sent is None:
             return None
-        sents = []
-        for s in self.sentences:
-            if s.start < sent.start:
-                sents.append(s)
+        sents = [s for s in self.sentences if s.start < sent.start]
         return sorted(sents + ([] if not include_self else [sent]), key=lambda s: s.start)
 
     def get_sent_anns(self, sent, ann_ignore=None, filter_fun=None, filter_param=None):
@@ -555,11 +552,13 @@ class CustomisedRecoginiser(SemEHRAnnDoc):
         return ret
 
     def get_containing_anns(self, ann):
-        c_anns = []
-        for a in self.phenotypes:
-            if ann != a and ann.str.lower() in a.str.lower() and len(a.str) > len(ann.str):
-                c_anns.append(a)
-        return c_anns
+        return [
+            a
+            for a in self.phenotypes
+            if ann != a
+            and ann.str.lower() in a.str.lower()
+            and len(a.str) > len(ann.str)
+        ]
 
     @property
     def full_text(self):
@@ -626,7 +625,7 @@ class CustomisedRecoginiser(SemEHRAnnDoc):
             #     dep_words += ['empty'] *4
             #     logging.debug('not found [%s]' % s)
             # words += dep_words
-        if len(words) == 0:
+        if not words:
             words = ['empty']
         return words
 
@@ -678,11 +677,7 @@ class CustomisedRecoginiser(SemEHRAnnDoc):
             return self._combined
         anns = [] + self.get_mapped_labels()
         for ann in self.get_customised_phenotypes():
-            overlaped = False
-            for m in self.get_mapped_labels():
-                if ann.overlap(m):
-                    overlaped = True
-                    break
+            overlaped = any(ann.overlap(m) for m in self.get_mapped_labels())
             if not overlaped:
                 anns.append(ann)
         self._combined = anns
@@ -738,13 +733,19 @@ class CustomisedRecoginiser(SemEHRAnnDoc):
 def relocate_annotation_pos(t, s, e, string_orig):
     if t[s:e] == string_orig:
         return [s, e]
-    candidates = []
     ito = re.finditer(r'[\s\.;\,\?\!\:\/$^](' + string_orig + r')[\s\.;\,\?\!\:\/$^]',
                       t, re.IGNORECASE)
-    for mo in ito:
-        # print mo.start(1), mo.end(1), mo.group(1)
-        candidates.append({'dis': abs(s - mo.start(1)), 's': mo.start(1), 'e': mo.end(1), 'matched': mo.group(1)})
-    if len(candidates) == 0:
+    candidates = [
+        {
+            'dis': abs(s - mo.start(1)),
+            's': mo.start(1),
+            'e': mo.end(1),
+            'matched': mo.group(1),
+        }
+        for mo in ito
+    ]
+
+    if not candidates:
         return [s, e]
     candidates.sort(cmp=lambda x1, x2: x1['dis'] - x2['dis'])
     # print candidates[0]

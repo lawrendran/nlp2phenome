@@ -104,7 +104,7 @@ def do_one_doc(doc_id, model_factory, concept_mapping, mention_pattern,
                update_doc_sql_ptn):
     container = []
     du.query_data(sql_ann_ptn.format(**doc_id), pool=db_pool, container=container)
-    if len(container) == 0:
+    if not container:
         logging.info('%s anns not found' % doc_id)
         return
     doc_anns = json.loads(container[0]['anns'])
@@ -112,7 +112,7 @@ def do_one_doc(doc_id, model_factory, concept_mapping, mention_pattern,
 
     container = []
     du.query_data(sql_text_ptn.format(**doc_id), pool=db_pool, container=container)
-    if len(container) == 0:
+    if not container:
         logging.info('%s text not found' % doc_id)
         return
     text = container[0]['doc_content']
@@ -158,17 +158,11 @@ def run_parallel_prediction(settings):
 
 
 def initial_morbidity_row(phenotypes):
-    r = {}
-    for p in phenotypes:
-        r[p] = 0
-    return r
+    return {p: 0 for p in phenotypes}
 
 
 def initial_phenotype_details(phenotypes):
-    r = {}
-    for p in phenotypes:
-        r[p] = {}
-    return r
+    return {p: {} for p in phenotypes}
 
 
 def add_phenotype_detail(phe_detial, phenotype, cui2freq, p2subtypes):
@@ -200,9 +194,7 @@ def add_data_row(data, patient, cur_row, phenotypes, phenotype2data, cur_phenoty
 
 
 def populate_subtype_output(subtype_list, phenotype_data, output_file):
-    data = {}
-    for c in ['patient_id'] + subtype_list:
-        data[c] = []
+    data = {c: [] for c in ['patient_id'] + subtype_list}
     for rd in phenotype_data:
         data['patient_id'] = rd['patient_id']
         for st in subtype_list:
@@ -223,10 +215,7 @@ def collect_patient_morbidity_result(phenotypes, sql_result, db_conf, output_fol
     du.query_data(sql_result, pool=db_pool, container=container)
     data = {}
     phenotype2subtypes = {}
-    phenotype2data = {}
-    for phe in phenotypes:
-        phenotype2data[phe] = []
-
+    phenotype2data = {phe: [] for phe in phenotypes}
     cur_p = None
     cur_row = initial_morbidity_row(phenotypes)
     cur_phenotype_detail = None

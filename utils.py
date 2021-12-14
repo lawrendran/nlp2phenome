@@ -146,7 +146,7 @@ def multi_thread_large_file_tasking(large_file, num_threads, process_func,
     pdf_queque = Queue.Queue(num_queue_size)
     print('queue filled, threading...')
     thread_objs = []
-    for i in range(num_threads):
+    for _ in range(num_threads):
         arr = [process_func] if args is None else [process_func] + args
         to = None
         if thread_init_func is not None:

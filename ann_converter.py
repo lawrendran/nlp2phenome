@@ -24,10 +24,8 @@ class AnnConverter(object):
     def to_eHOST(doc_key, anns, file_pattern='%s.txt', id_pattern='smehr-%s-%s'):
         elem_annotations = ET.Element("annotations")
         elem_annotations.set('textSource', file_pattern % doc_key)
-        idx = 0
-        for d in anns:
+        for idx, d in enumerate(anns, start=1):
             ann = d['ann']
-            idx += 1
             mention_id = id_pattern % (doc_key, idx)
             AnnConverter.create_elem_ann(elem_annotations, mention_id, ann.start, ann.end, ann.str,
                                          AnnConverter.get_semehr_ann_label(ann))
@@ -63,6 +61,7 @@ class AnnConverter(object):
         doc = tree.getroot()
         ann2label = {}
         ann2freq = {}
+        freq = 0
         for ann in doc.findall("annotation"):
             m_id = ann.find("mention").attrib["id"]
             cm = doc.find('.//classMention[@id="' + m_id + '"]')
@@ -70,12 +69,10 @@ class AnnConverter(object):
             m_span = ann.find("span").attrib
             annid = 'm-%s-%s' % (m_span['start'], m_span['end'])
             m_text = ann.find("spannedText").text
-            freq = 0
             if annid not in ann2freq:
                 ann2freq[annid] = 1
-            else:
-                if do_multi:
-                    ann2freq[annid] += 1
+            elif do_multi:
+                ann2freq[annid] += 1
             annid_freq = '%s:%s' % (annid, ann2freq[annid])
             ann2label[annid_freq] = {"text": m_text, "class": cls}
         return ann2label
@@ -166,8 +163,12 @@ class AnnConverter(object):
             output.append('%s\t%s\t%s' % (ann, ann1_label, ann2_label))
 
         print('kappa score: [%s]', cohen_kappa_score(ann1_merged, ann2_merged))
-        for cat in cat2pares:
-            print('%s kappa score: [%s]' % (cat, cohen_kappa_score(cat2pares[cat]['ann1'], cat2pares[cat]['ann2'])))
+        for cat, value in cat2pares.items():
+            print(
+                '%s kappa score: [%s]'
+                % (cat, cohen_kappa_score(cat2pares[cat]['ann1'], value['ann2']))
+            )
+
         utils.save_string('\n'.join(output), output_file)
 
 if __name__ == "__main__":

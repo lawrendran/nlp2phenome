@@ -65,9 +65,12 @@ class eHostAnnDoc(EDIRDoc):
                     m = re.match(r'(ADDED)\_([^\(]+)', mc.attrib['id'])
                 if m is not None:
                     cls = m.group(1)
-                    if no_context and cls != 'IRRELEVANT_LABELS':
-                        if cls.find('_') >= 0:
-                            cls = cls[cls.find('_')+1:]
+                    if (
+                        no_context
+                        and cls != 'IRRELEVANT_LABELS'
+                        and cls.find('_') >= 0
+                    ):
+                        cls = cls[cls.find('_')+1:]
                     mentions = root.findall('.//mention[@id="' + mention_id + '"]/..')
                     if len(mentions) > 0:
                         span = mentions[0].findall('./span')
@@ -135,7 +138,7 @@ def get_what_is_changing(ann_folder, text_folder, output_file, eHostAnnFile=True
     nlp = rr.get_nlp_instance()
     files = [f for f in listdir(ann_folder) if isfile(join(ann_folder, f))]
     type2abstractions = {}
-    for f in files:        
+    for f in files:    
         anns = []
         text_file = join(text_folder, f[0:-14])
         if eHostAnnFile:
@@ -146,7 +149,10 @@ def get_what_is_changing(ann_folder, text_folder, output_file, eHostAnnFile=True
             anns = d.get_ess_entities()
         if len(anns) == 0:
             logging.info('anns is empty for [{:s}]'.format(f))
-        text = utils.read_text_file_as_string(join(text_folder, f[0:-14]), encoding='cp1252')
+        text = utils.read_text_file_as_string(
+            join(text_folder, f[:-14]), encoding='cp1252'
+        )
+
         sents = rr.get_sentences_as_anns(nlp, text)
         for ann in anns:
             for s in sents:
@@ -179,12 +185,9 @@ def analysing_label_performance(folder, output_file):
         d = eHostAnnDoc(join(folder, f))
         for ann in d.get_ess_entities():
             s = ann.str
-            if not (s in s2t):
+            if s not in s2t:
                 s2t[s] = {}
-            if ann.type in s2t[s]:
-                s2t[s][ann.type] = s2t[s][ann.type] + 1
-            else:
-                s2t[s][ann.type] = 1
+            s2t[s][ann.type] = s2t[s][ann.type] + 1 if ann.type in s2t[s] else 1
     sts = sorted([(s, s2t[s]['CORRECT'] if 'CORRECT' in s2t[s] else 0, s2t[s]['IRRELEVANT_LABELS'] if 'IRRELEVANT_LABELS' in s2t[s] else 0, s2t[s]['ADDED'] if 'ADDED' in s2t[s] else 0) for s in s2t], key=itemgetter(2), reverse=True)
     s = ('\n'.join(['%s\t%s\t%s\t%s' % (t[0], t[1], t[2], t[3]) for t in sts]))
     utils.save_string(s, output_file)
@@ -253,8 +256,7 @@ def analyse_trajectory_subjects(file, output_file):
             add_key_freq(t2freq[t]['root'], sub['root'])
 
     s = ''
-    for t in t2freq:
-        freqs = t2freq[t]
+    for t, freqs in t2freq.items():
         subs = sorted([(k, freqs['subject'][k]) for k in freqs['subject']], key=itemgetter(1), reverse=True)
         s += '***%s [subjects]***\n%s\n\n' % (t, freq_to_str(subs))
         roots = sorted([(k, freqs['root'][k]) for k in freqs['root']], key=itemgetter(1), reverse=True)

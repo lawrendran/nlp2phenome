@@ -231,9 +231,9 @@ class LabelModel(object):
                 if not isfile(join(gold_dir, '%s.txt.knowtator.xml' % fk)):
                     continue
                 gd = eHostGenedDoc(join(gold_dir, '%s.txt.knowtator.xml' % fk))
+            elif not isfile(join(gold_dir, '%s-ann.xml' % fk)):
+                continue
             else:
-                if not isfile(join(gold_dir, '%s-ann.xml' % fk)):
-                    continue
                 gd = EDIRDoc(join(gold_dir, '%s-ann.xml' % fk))
             t = self.label.replace('neg_', '')
             anns = cr.get_anns_by_label(t)
@@ -244,11 +244,13 @@ class LabelModel(object):
             # cr.relocate_all_anns(fk)
             # gd.relocate_anns(cr.get_full_text(fk))
 
-            not_matched_gds = []
-            for e in gd.get_ess_entities():
-                if (ignore_context and e.label.replace('neg_', '') == label_type) \
-                        or (not ignore_context and e.label == self.label):
-                    not_matched_gds.append(e.id)
+            not_matched_gds = [
+                e.id
+                for e in gd.get_ess_entities()
+                if (ignore_context and e.label.replace('neg_', '') == label_type)
+                or (not ignore_context and e.label == self.label)
+            ]
+
             for a in anns + neg_anns:
                 # self.add_context_dimension_by_annotation(a)
                 self.add_label_dimension_by_annotation(a)
@@ -303,11 +305,13 @@ class LabelModel(object):
                 continue
             gd = EDIRDoc(join(gold_dir, '%s-ann.xml' % fk))
 
-            not_matched_gds = []
-            for e in gd.get_ess_entities():
-                if (ignore_context and e.label.replace('neg_', '') == label_type) \
-                        or (not ignore_context and e.label == self.label):
-                    not_matched_gds.append(e.id)
+            not_matched_gds = [
+                e.id
+                for e in gd.get_ess_entities()
+                if (ignore_context and e.label.replace('neg_', '') == label_type)
+                or (not ignore_context and e.label == self.label)
+            ]
+
             anns = cr.get_anns_by_label(self.label, no_context=ignore_context)
             for a in anns:
                 multiple_true_positives = 0
@@ -322,10 +326,7 @@ class LabelModel(object):
                             matched = True
                             not_matched_gds.remove(g.id)
 
-                if separate_by_label:
-                    lbl = LabelModel.get_ann_query_label(a)
-                else:
-                    lbl = 'united'
+                lbl = LabelModel.get_ann_query_label(a) if separate_by_label else 'united'
                 ql = lbl
                 if ql not in query_label_perform:
                     query_label_perform[ql] = {'c': 0, 'w': 0}
@@ -387,11 +388,12 @@ class LabelModel(object):
             # cr.relocate_all_anns(fk)
             # gd.relocate_anns(cr.get_full_text(fk))
 
-            not_matched_gds = []
-            for e in gd.get_ess_entities():
-                if (ignore_context and e.label.replace('neg_', '') == label_type) \
-                        or (not ignore_context and e.label == self.label):
-                    not_matched_gds.append(e.id)
+            not_matched_gds = [
+                e.id
+                for e in gd.get_ess_entities()
+                if (ignore_context and e.label.replace('neg_', '') == label_type)
+                or (not ignore_context and e.label == self.label)
+            ]
 
             anns = cr.get_anns_by_label(self.label, ignore_mappings=ignore_mappings, no_context=ignore_context)
             if len(annotated_anns) > 0:
@@ -453,17 +455,29 @@ class LabelModel(object):
             for g in gd.get_ess_entities():
                 if g.id in not_matched_gds:
                     missed = g
-                    logging.debug('\t'.join(
-                        ['M', g.str, str(g.negated), str(g.start), str(g.end), join(gold_dir, '%s-ann.xml' % fk)]))
-            # if len(not_matched_gds) > 0:
-            #     print not_matched_gds
-            #     for a in anns:
-            #         logging.debug(a.str, a.start, a.end, missed.overlap(a))
-        bad_labels = []
-        for ql in query_label_perform:
-            p = query_label_perform[ql]
-            if p['c'] == 0 or (1.0 * p['w'] / p['c'] < 0.05):
-                bad_labels.append(ql)
+                    logging.debug(
+                        '\t'.join(
+                            [
+                                'M',
+                                missed.str,
+                                str(missed.negated),
+                                str(missed.start),
+                                str(missed.end),
+                                join(gold_dir, '%s-ann.xml' % fk),
+                            ]
+                        )
+                    )
+
+                # if len(not_matched_gds) > 0:
+                #     print not_matched_gds
+                #     for a in anns:
+                #         logging.debug(a.str, a.start, a.end, missed.overlap(a))
+        bad_labels = [
+            ql
+            for ql, p in query_label_perform.items()
+            if p['c'] == 0 or (1.0 * p['w'] / p['c'] < 0.05)
+        ]
+
         return {'lbl2data': lbl2data,
                 'fns': false_negatives, 'bad_labels': bad_labels, 'files': file_keys}
 
@@ -472,10 +486,7 @@ class LabelModel(object):
                                 separate_by_label=False):
         a = annotation
         extra_dims = [1] if len(cr.get_containing_anns(a)) > 0 else [0]
-        if separate_by_label:
-            lbl = LabelModel.get_ann_query_label(a)
-        else:
-            lbl = 'united'
+        lbl = LabelModel.get_ann_query_label(a) if separate_by_label else 'united'
         if lbl not in lbl2data:
             lbl2data[lbl] = {'X': [], 'Y': [], 'multiple_tps': 0, 'doc_anns': []}
         X = lbl2data[lbl]['X']
@@ -530,10 +541,10 @@ class LabelModel(object):
     @staticmethod
     def type_related_ann_filter(ann, cm_obj):
         if hasattr(ann, 'cui'):
-            return not ann.cui.lower() in cm_obj.all_entities
-            # return not ann.cui in _cm_obj.type2cocnepts(type)
+            return ann.cui.lower() not in cm_obj.all_entities
+                # return not ann.cui in _cm_obj.type2cocnepts(type)
         else:
-            return not ann.str.lower() in cm_obj.all_entities
+            return ann.str.lower() not in cm_obj.all_entities
             # return not ann.str in _cm_obj.type2gaz[type]
 
     @staticmethod

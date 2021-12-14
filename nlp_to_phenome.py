@@ -124,10 +124,10 @@ def learn_concept_mappings(output_lst_folder):
     s += '\n' * 2
     labels = []
     defs = []
-    for t in t2missed:
+    for t, value in t2missed.items():
         t2missed[t] = list(set(t2missed[t]))
         utils.save_string('\n'.join(t2missed[t]) + '\n', join(output_lst_folder, t + '.lst'))
-        labels += [l.lower() for l in t2missed[t]]
+        labels += [l.lower() for l in value]
         defs.append(t + '.lst' + ':StrokeStudy:' + t)
     s += '\n' * 2
     s += '\n'.join(defs)
@@ -164,10 +164,7 @@ def learn_prediction_model(label, ann_dir=None, gold_dir=None, model_file=None, 
         for lbl in data['lbl2data']:
             X = data['lbl2data'][lbl]['X']
             Y = data['lbl2data'][lbl]['Y']
-            n_true = 0
-            for y in Y:
-                if y == [1]:
-                    n_true += 1
+            n_true = sum(y == [1] for y in Y)
             logging.debug('training data: %s, dimensions %s, insts %s' % (lbl, len(X[0]), len(X)))
             if len(X) <= _min_sample_size:
                 lm.add_rare_label(lbl, n_true * 1.0 / len(X))
@@ -231,10 +228,12 @@ def predict_label(model_file, test_ann_dir, test_gold_dir, ml_model_file_ptn, pe
                 logging.debug('predict data: %s, dimensions %s, insts %s' % (lbl, len(X[0]), len(X)))
             bc = lm.get_binary_cluster_classifier(lbl)
             if bc is not None:
-                complementary_classifiers = []
-                for l in lm.cluster_classifier_dict:
-                    if l != lbl:
-                        complementary_classifiers.append(lm.cluster_classifier_dict[l])
+                complementary_classifiers = [
+                    lm.cluster_classifier_dict[l]
+                    for l in lm.cluster_classifier_dict
+                    if l != lbl
+                ]
+
                 for idx in range(len(X)):
                     logging.debug(
                         '%s => %s' % (bc.classify(X[idx], complementary_classifiers=complementary_classifiers), Y[idx]))
@@ -368,8 +367,11 @@ def merge_mappings_dictionary(map_files, dict_dirs, new_map_file, new_dict_folde
                     t2list[t].add(l)
     utils.save_json_array(new_m, new_map_file)
     logging.info('mapping saved to %s' % new_map_file)
-    for t in t2list:
-        utils.save_string('\n'.join(list(t2list[t])) + '\n', join(new_dict_folder, t + '.lst'))
+    for t, value in t2list.items():
+        utils.save_string(
+            '\n'.join(list(value)) + '\n', join(new_dict_folder, t + '.lst')
+        )
+
         logging.info('%s.lst saved' % t)
     logging.info('all done')
 
