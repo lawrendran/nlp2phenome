@@ -109,7 +109,7 @@ class TokenAbstraction(object):
         return self._t
 
     def do_abstract(self):
-        self._children = [t for t in self._t.children]
+        self._children = list(self._t.children)
         t = self._t
         r = t
         while (t.head != t) and t.dep_ not in ['ROOT', 'relcl', 'acl', 'advcl']:
@@ -141,7 +141,7 @@ class TokenAbstraction(object):
         return seq
 
     def do_abstract_descendent(self):
-        return [c for c in self._t.children]
+        return list(self._t.children)
 
     def to_dict(self):
         return {'children': [t.text for t in self.children], 'root': self.root.text,
@@ -286,9 +286,9 @@ class MentionPattern(object):
                     if score > threshold:
                         entried_scores.append((score, ref_ptn[grp][inst]['freq']))
         #                 print('\tvs %s: score %s, %s' % (inst, score, ref_good_ptns[grp][inst]['freq']))
-        if len(entried_scores) > 0:
-            total = sum([s[0] * s[1] for s in entried_scores])
-            supports = sum([s[1] for s in entried_scores])
+        if entried_scores:
+            total = sum(s[0] * s[1] for s in entried_scores)
+            supports = sum(s[1] for s in entried_scores)
             avg_score = total / supports
             # print('\tscore %s, support %s, %s|%s' % (avg_score, supports, ret['subject'], ret['vcontect']))
             return {'score': avg_score, 'supports': supports, 'subject': [t.text for t in ret['subject']],
@@ -310,21 +310,18 @@ class MentionPattern(object):
             return -1
         if good_match is None:
             return 0
-        # elif bad_match is None:
-        #     return 1
+        sub = good_match['subject']
+        ctx = good_match['context']
+        if MentionPattern.lists_sim_enough(sub, bad_subjs, nlp) == 1:
+            return 0
+        if MentionPattern.lists_sim_enough(ctx, bad_context, nlp) == 1:
+            return 0
+        # return -1
+        if bad_match is None:
+            return 1
         else:
-            sub = good_match['subject']
-            ctx = good_match['context']
-            if MentionPattern.lists_sim_enough(sub, bad_subjs, nlp) == 1:
-                return 0
-            if MentionPattern.lists_sim_enough(ctx, bad_context, nlp) == 1:
-                return 0
-            # return -1
-            if bad_match is None:
-                return 1
-            else:
-                return 1 if good_match['score'] * good_match['supports'] >= bad_match['score'] * bad_match[
-                    'supports'] else 0
+            return 1 if good_match['score'] * good_match['supports'] >= bad_match['score'] * bad_match[
+                'supports'] else 0
 
     @staticmethod
     def lists_sim_enough(l1, l2, nlp, threshold=0.8):

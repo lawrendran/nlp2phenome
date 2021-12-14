@@ -122,11 +122,7 @@ class PhenotypeRuleExecutor(object):
     def match_rule_construct(rc_list, anns):
         matched = []
         for ann in anns:
-            m = True
-            for rc in rc_list:
-                if not PhenotypeRuleExecutor.match_ann_rule(rc, ann):
-                    m = False
-                    break
+            m = all(PhenotypeRuleExecutor.match_ann_rule(rc, ann) for rc in rc_list)
             if m:
                 matched.append(ann)
         return matched

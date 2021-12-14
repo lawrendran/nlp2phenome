@@ -392,10 +392,12 @@ class BinaryClusterClassifier(object):
 
     @staticmethod
     def calculate_most_similar(classifier, x):
-        results = []
         xa = numpy.array(x).reshape(1, -1)
-        for cls in classifier.class1reps:
-            results.append((cls, cosine_similarity(xa, classifier.class1reps[cls])))
+        results = [
+            (cls, cosine_similarity(xa, classifier.class1reps[cls]))
+            for cls in classifier.class1reps
+        ]
+
         for cls in classifier.class2reps:
             results.append((cls, cosine_similarity(xa, classifier.class2reps[cls])))
         return sorted(results, key=lambda x: -x[1])[0]
@@ -411,7 +413,7 @@ class BinaryClusterClassifier(object):
                 cls2insts[cls] = [X[idx]]
             else:
                 cls2insts[cls].append(X[idx])
-        cls2mean = {}
-        for cls in cls2insts:
-            cls2mean[cls] = numpy.mean(cls2insts[cls], axis=0).reshape(1, -1)
-        return cls2mean
+        return {
+            cls: numpy.mean(cls2insts[cls], axis=0).reshape(1, -1)
+            for cls in cls2insts
+        }

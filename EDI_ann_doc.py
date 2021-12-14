@@ -59,9 +59,8 @@ class EDIRDoc(object):
         for e in root.findall('.//p/s[@proc]/w'):
             if 'id' not in e.attrib:
                 continue
-            else:
-                offset_start = int(e.attrib['id'][1:])
-                break
+            offset_start = int(e.attrib['id'][1:])
+            break
         # if offset_start == -1:
         #     logging.debug('%s offset start could not be found' % self.file_path)
         self._word_offset_start = offset_start
@@ -229,7 +228,7 @@ class ConllDoc(EDIRDoc):
                         self._tokens.append(token)
         left_ess = [e for e in work_ess if e not in matched_ess
                     and e.type.replace('neg_', '') in self._label_white_list]
-        if len(left_ess) > 0:
+        if left_ess:
             logging.error('leftovers: [%s] at %s' % (
                 '\n'.join(['%s (%s,%s)' % (a.type, a.start, a.end) for a in left_ess]), self.file_path))
         return self._tokens
